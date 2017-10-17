@@ -1,0 +1,64 @@
+# Authors: Kavya Sethuram, Rasika Guru, Roshani Mangalore
+import pandas as pd
+import numpy as np
+
+# Main function
+if __name__ == "__main__":
+    df = pd.read_csv('pca-data.txt', sep='\t', header=None)
+    data_array = df.as_matrix()
+    count = len(data_array)
+    mean_list = []
+
+    # Computation of Mean for all co-ordinates
+    for i in range(3):
+        sum = 0
+        for j in range(count):
+            sum += data_array[j][i]
+        mean_list.append(sum / count)
+
+    # Computation of (X minus Mean) matrix
+    for i in range(3):
+        for j in range(count):
+            data_array[j][i] = data_array[j][i] - mean_list[i]
+
+            # Initializing Covariance Matrix
+    covariance_matrix = np.zeros(shape=(3, 3))
+    # Computation of Covariance Matrix
+    covariance_matrix = (np.matrix(data_array).T * np.matrix(data_array)) / count
+
+    # Computation of Eigen Values and Eigen Vectors from Covariance Matrix
+    eigenvalues, eigenvector = np.linalg.eig(covariance_matrix)
+    eigen_list = []
+    eigenvector = np.asarray(eigenvector)
+    eigenvec = [[eigenvector[0][i], eigenvector[1][i], eigenvector[2][i]] for i in range(3)]
+
+    # Select two highest Eigen values ad their corresponding Eigen Vectors
+    eigen_dict = {eigenvalues[i]: eigenvec[i] for i in range(3)}
+    sorted_eigenvalues = sorted(eigen_dict.items(), reverse=True)
+    k_dimension_list = []
+    tries = 0
+    for i in range(len(sorted_eigenvalues)):
+        if (tries == 2):
+            break
+        tries = tries + 1
+        k_dimension_list.append(sorted_eigenvalues[i][1])
+
+    eigen_matrix = np.array(k_dimension_list)
+
+
+    data_array_transpose = np.transpose(data_array)
+    reduced_dimension_matrix = np.dot(eigen_matrix, data_array_transpose)
+
+    print [[reduced_dimension_matrix[0, i], reduced_dimension_matrix[1, i]] for i in
+           range(len(reduced_dimension_matrix[0]))]
+
+print np.shape(reduced_dimension_matrix)
+# dataframe_results = pd.DataFrame(reduced_dimension_matrix)
+#
+# dataframe_results.to_csv('outfile.txt',index=False)
+
+
+# with open('outfile.txt', "w") as f:
+#     for i in range(len(reduced_dimension_matrix)):
+#         # np.savetxt(f,reduced_dimension_matrix[i], fmt='%.2f')
+#         f.write("%s\n" % reduced_dimension_matrix[i])
