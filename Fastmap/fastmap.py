@@ -1,59 +1,106 @@
-#Authors: Kavya Sethuram, Rasika Guru, Roshani Mangalore
-import pandas as pd
+import copy
+import math
 import numpy as np
+from math import sqrt
+import pandas as pd
+from random import randint
+import matplotlib.pyplot as plt
 
-#Main function
+
+def max_distance(index):
+    maxval = 0
+    for i in range(10):
+        if initial_matrix[index][i] > maxval:
+            maxval = initial_matrix[index][i]
+            max_index = i
+    return max_index
+
+
+def calculate_distance(point1,point2):
+    return abs(point1-point2)
+
+def new_distance(a,projection_list):
+    new_dist_matrix=np.zeros(shape=(10,10),dtype=np.float)
+    for i in range(10):
+        for j in range(10):
+            new_dist_matrix[i][j] = math.sqrt(((a[i][j])**2) -  (projection_list[i]-projection_list[j])**2)
+    return new_dist_matrix
+
+
+
+def fastmap(a,oa,ob):
+    projection_list = []
+    for i in range(10):
+        if i not in(oa,ob):
+
+            dai = a[oa][i]
+            dbi = a[ob][i]
+            dab = a[oa][ob]
+            xi = float(((dai*dai) + (dab*dab) - (dbi*dbi))/(2*dab))
+            projection_list.append(xi)
+        elif i == oa:
+            projection_list.append(0.0)
+        else:
+            projection_list.append(float(dab))
+    return projection_list
+
 if __name__ == "__main__":
-    df = pd.read_csv('pca-data.txt', sep = '\t',header=None)
-    data_array = df.as_matrix()
-    count = len(data_array)
-    mean_list = []
+    count = 0
+    dataframe = pd.read_csv('fastmap-data.txt', sep='\t',header=None)
+    df = dataframe.values
+    max_list = []
+    initial_matrix = np.zeros(shape=(10,10),dtype=np.float)
+    outputlist = []
+    for item in df:
+        i = item[0]
+        j = item[1]
+        initial_matrix[i-1][j-1] = item[2]
+        initial_matrix[j-1][i-1] = item[2]
+    for k in range(2):
+        random_number = randint(0, 9)
 
-#Computation of Mean for all co-ordinates
-    for i in range(3):
-        sum = 0
-        for j in range(count):
-            sum+=data_array[j][i]
-        mean_list.append(sum/count)
+        max_list.append(random_number)
+        max_index = random_number
 
-# Computation of (X minus Mean) matrix
-    for i in range(3):
-        for j in range(count):
-            data_array[j][i]= data_array[j][i]-mean_list[i]
+        while(True):
+            max_index = max_distance(max_index)
 
-#Initializing Covariance Matrix
-    covariance_matrix = np.zeros(shape=(3,3))
-#Computation of Covariance Matrix
-    covariance_matrix = (np.matrix(data_array).T* np.matrix(data_array))/count
+            max_list.append(max_index)
 
-#Computation of Eigen Values and Eigen Vectors from Covariance Matrix
-    eigenvalues,eigenvector = np.linalg.eig(covariance_matrix)
-    eigen_list=[]
-    eigenvector=np.asarray(eigenvector)
-    eigenvec = [[eigenvector[0][i],eigenvector[1][i],eigenvector[2][i]] for i in range(3)]
+            startindex = len(max_list) -1
 
-#Select two highest Eigen values and their corresponding Eigen Vectors
-    eigen_dict = {eigenvalues[i]:eigenvec[i] for i in range(3)}
-    sorted_eigenvalues = sorted(eigen_dict.items(),reverse = True)
-    k_dimension_list = []
-    tries=0
-    for i in range(len(sorted_eigenvalues)):
-        if(tries == 2):
-            break
-        tries = tries + 1
-        k_dimension_list.append(sorted_eigenvalues[i][1])
+            if len(max_list) > 2:
+                if max_list[startindex] == max_list[startindex-2]:
+                    oa = max_list[startindex]
+                    ob = max_list[startindex-1]
+                    break
+                else:
+                    startindex = startindex+1
 
-    eigen_matrix = np.array(k_dimension_list)
-    data_array_transpose=np.transpose(data_array)
+        dab = abs(oa-ob)
 
-    #Computation of k-dimension matrix
-    reduced_dimension_matrix =  np.dot(eigen_matrix,data_array_transpose)
-    reduced_dimension_list= [[reduced_dimension_matrix[0,i],reduced_dimension_matrix[1,i]] for i in range(len(reduced_dimension_matrix[0]))]
-    reduced_dimension_list=np.matrix(reduced_dimension_list)
-    #to print the output on the screen
-    print reduced_dimension_list
+        if oa<ob:
+            projection_list = fastmap(initial_matrix,oa, ob)
+        else:
+            projection_list = fastmap(initial_matrix,ob, oa)
 
-#to write into a file
-with open('outfile.txt',"w") as f:
-    for line in reduced_dimension_list:
-        np.savetxt(f, line,delimiter='\t',fmt='%.8f')
+        outputlist.append(projection_list)
+        count = count+1
+        if count<2:
+            initial_matrix = new_distance(initial_matrix,projection_list)
+
+    print "Mapping of objcts in 2D space"
+    for i in range(len(outputlist[0])):
+        print [outputlist[0][i],outputlist[1][i]]
+
+    ## Plotting
+
+    plotarray = np.asarray(outputlist)
+    
+    wordlist = open('fastmap-wordlist.txt', "r")
+    strings = [words.strip() for words in wordlist.readlines()]
+    fig, ax = plt.subplots()
+    ax.scatter(plotarray[0,:], plotarray[1,:])
+    for i, txt in enumerate(strings):
+        ax.annotate(txt, (plotarray[0, i], plotarray[1, i]))
+    plt.show()
